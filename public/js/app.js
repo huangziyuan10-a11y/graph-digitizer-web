@@ -7,46 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('graph-canvas');
   const digitizer = new GraphDigitizer(canvas);
 
-  // --- Stats (localStorage-based, no server needed) ---
-  function loadStats() {
-    const today = new Date().toISOString().split('T')[0];
-    if (localStorage.getItem('gd_daily_date') !== today) {
-      localStorage.setItem('gd_daily_date', today);
-      localStorage.setItem('gd_daily_active', '0');
-    }
-    return {
-      total_users: parseInt(localStorage.getItem('gd_total_users') || '0'),
-      total_graphs: parseInt(localStorage.getItem('gd_total_graphs') || '0'),
-      daily_active: parseInt(localStorage.getItem('gd_daily_active') || '0')
-    };
-  }
-
-  function recordVisit() {
-    const key = 'gd_visited_' + new Date().toISOString().split('T')[0];
-    if (!localStorage.getItem(key)) {
-      localStorage.setItem(key, '1');
-      const total = parseInt(localStorage.getItem('gd_total_users') || '0') + 1;
-      localStorage.setItem('gd_total_users', total.toString());
-    }
-    displayStats();
-  }
-
-  function recordGraph() {
-    const total = parseInt(localStorage.getItem('gd_total_graphs') || '0') + 1;
-    localStorage.setItem('gd_total_graphs', total.toString());
-    const daily = parseInt(localStorage.getItem('gd_daily_active') || '0') + 1;
-    localStorage.setItem('gd_daily_active', daily.toString());
-    displayStats();
-  }
-
-  function displayStats() {
-    const stats = loadStats();
-    document.getElementById('stat-users').textContent = stats.total_users.toLocaleString();
-    document.getElementById('stat-graphs').textContent = stats.total_graphs.toLocaleString();
-    document.getElementById('stat-daily').textContent = stats.daily_active.toLocaleString();
-  }
-
-  recordVisit();
+  // Stats: tracked by GitHub Traffic Analytics (repo owner only)
+  // Go to: github.com/huangziyuan10-a11y/graph-digitizer-web > Insights > Traffic
 
   // --- Section refs ---
   const stepCalibrate = document.getElementById('step-calibrate');
@@ -211,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     digitizer.autoExtract();
     updateDataTable();
-    recordGraph();
     stepData.scrollIntoView({ behavior: 'smooth' });
   });
 
