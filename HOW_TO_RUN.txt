@@ -1,0 +1,98 @@
+============================================
+  GRAPH DIGITIZER - How to Run & Deploy
+============================================
+
+This is a 100% static website. No server required!
+
+----- OPTION 1: Just open it (easiest) -----
+
+1. Go to the folder: graph-digitizer-web/public/
+2. Double-click index.html
+3. It opens in your browser - done!
+
+Note: Stats are saved in your browser's localStorage.
+
+
+----- OPTION 2: Deploy to GitHub Pages (free, online) -----
+
+1. Create a GitHub account at https://github.com
+2. Create a new repository (e.g., "graph-digitizer")
+3. Upload ALL files from the "public" folder to the repository
+4. Go to Settings > Pages
+5. Set Source to "Deploy from a branch" > main > / (root)
+6. Click Save
+7. Your site will be live at: https://yourusername.github.io/graph-digitizer/
+
+
+----- OPTION 3: Deploy to Netlify (free, easiest online) -----
+
+1. Go to https://www.netlify.com
+2. Sign up (free)
+3. Drag and drop the "public" folder onto the Netlify dashboard
+4. Done! You get a free URL like: https://your-site.netlify.app
+
+
+----- OPTION 4: Deploy to Vercel (free) -----
+
+1. Go to https://vercel.com
+2. Sign up with GitHub
+3. Import your repository
+4. It auto-deploys. Done!
+
+
+----- OPTION 5: Run with Python server (if you have Python) -----
+
+1. Open terminal/command prompt
+2. Navigate to the public folder:
+   cd graph-digitizer-web/public
+3. Run:
+   python -m http.server 3000
+4. Open browser to: http://localhost:3000
+
+
+============================================
+  HOW TO USE THE TOOL
+============================================
+
+Step 1: Upload an image of your graph/chart/plot
+
+Step 2: Calibrate the axes
+   - Click "Set X-min point" then click on the graph where X starts
+   - Enter the real X-min value in the input box
+   - Repeat for X-max, Y-min, Y-max
+   - The tool needs 4 reference points to map pixels to data
+
+Step 3: Extract data
+   AUTO MODE:
+   - Pick the color of the data line/points using the color picker
+   - Adjust tolerance (higher = more lenient color matching)
+   - Click "Extract Data"
+
+   MANUAL MODE:
+   - Switch to "Manual Click" mode
+   - Click directly on data points on the graph
+   - Each click adds a point
+
+Step 4: View, edit, and export
+   - Edit any X or Y value directly in the table
+   - Delete individual points with the X button
+   - Sort by X value
+   - Export to CSV or Excel
+
+
+============================================
+  PROJECT FILES
+============================================
+
+graph-digitizer-web/
+  public/
+    index.html          - Main page
+    css/style.css       - Styles
+    js/app.js           - Main application logic
+    js/digitizer.js     - Core digitizer engine
+    js/export.js        - CSV/Excel export
+
+  server.js             - Optional Node.js server (needs npm install)
+  database.js           - Optional server-side stats with SQLite
+  package.json          - Node.js dependencies (optional)
+  HOW_TO_RUN.txt        - This file

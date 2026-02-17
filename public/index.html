@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graph Digitizer - Free Online Tool</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <h1 class="logo">Graph Digitizer</h1>
+      <p class="tagline">Free tool to extract data from graphs and charts</p>
+    </div>
+  </header>
+
+  <!-- Stats Dashboard -->
+  <section class="stats-bar">
+    <div class="container stats-grid">
+      <div class="stat-item">
+        <span class="stat-value" id="stat-users">0</span>
+        <span class="stat-label">Users Served</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-graphs">0</span>
+        <span class="stat-label">Graphs Processed</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-daily">0</span>
+        <span class="stat-label">Today's Usage</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main App -->
+  <main class="container main-content">
+
+    <!-- Step 1: Upload -->
+    <section class="step-section" id="step-upload">
+      <h2 class="step-title"><span class="step-num">1</span> Upload Your Graph</h2>
+      <div class="upload-area" id="upload-area">
+        <div class="upload-content">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p>Drag & drop an image here, or <label for="file-input" class="upload-link">browse files</label></p>
+          <p class="upload-hint">Supports PNG, JPG, GIF, WebP, BMP (max 20MB)</p>
+        </div>
+        <input type="file" id="file-input" accept="image/*" hidden>
+      </div>
+    </section>
+
+    <!-- Step 2: Calibrate Axes -->
+    <section class="step-section hidden" id="step-calibrate">
+      <h2 class="step-title"><span class="step-num">2</span> Calibrate Axes</h2>
+      <p class="step-desc">Click on the graph to set 4 calibration points so we can map pixels to real data values.</p>
+
+      <div class="calibration-controls">
+        <div class="cal-buttons">
+          <button class="btn btn-cal active" id="btn-cal-x1" data-point="x1">Set X-min point</button>
+          <button class="btn btn-cal" id="btn-cal-x2" data-point="x2">Set X-max point</button>
+          <button class="btn btn-cal" id="btn-cal-y1" data-point="y1">Set Y-min point</button>
+          <button class="btn btn-cal" id="btn-cal-y2" data-point="y2">Set Y-max point</button>
+        </div>
+        <div class="cal-values">
+          <div class="cal-input-group">
+            <label>X-min value:</label>
+            <input type="number" id="val-x1" step="any" value="0">
+          </div>
+          <div class="cal-input-group">
+            <label>X-max value:</label>
+            <input type="number" id="val-x2" step="any" value="10">
+          </div>
+          <div class="cal-input-group">
+            <label>Y-min value:</label>
+            <input type="number" id="val-y1" step="any" value="0">
+          </div>
+          <div class="cal-input-group">
+            <label>Y-max value:</label>
+            <input type="number" id="val-y2" step="any" value="10">
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper">
+        <canvas id="graph-canvas"></canvas>
+      </div>
+
+      <div class="calibration-status" id="cal-status">
+        Set all 4 calibration points to continue.
+      </div>
+    </section>
+
+    <!-- Step 3: Extract Data -->
+    <section class="step-section hidden" id="step-extract">
+      <h2 class="step-title"><span class="step-num">3</span> Extract Data</h2>
+
+      <div class="extract-controls">
+        <div class="extract-mode">
+          <label>Mode:</label>
+          <button class="btn btn-mode active" id="btn-auto" data-mode="auto">Auto Detect</button>
+          <button class="btn btn-mode" id="btn-manual" data-mode="manual">Manual Click</button>
+        </div>
+
+        <div class="auto-settings" id="auto-settings">
+          <div class="setting-group">
+            <label>Target color:</label>
+            <input type="color" id="target-color" value="#0000ff">
+            <button class="btn btn-sm" id="btn-pick-color">Pick from image</button>
+          </div>
+          <div class="setting-group">
+            <label>Color tolerance:</label>
+            <input type="range" id="color-tolerance" min="5" max="100" value="30">
+            <span id="tolerance-value">30</span>
+          </div>
+          <div class="setting-group">
+            <label>Min point size:</label>
+            <input type="range" id="min-point-size" min="1" max="20" value="3">
+            <span id="point-size-value">3</span>
+          </div>
+        </div>
+
+        <div class="extract-buttons">
+          <button class="btn btn-primary" id="btn-extract">Extract Data</button>
+          <button class="btn btn-secondary" id="btn-clear-points">Clear Points</button>
+          <button class="btn btn-secondary" id="btn-undo">Undo Last</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 4: Data Table & Export -->
+    <section class="step-section hidden" id="step-data">
+      <h2 class="step-title"><span class="step-num">4</span> Data Table & Export</h2>
+
+      <div class="data-controls">
+        <button class="btn btn-primary" id="btn-export-csv">Export CSV</button>
+        <button class="btn btn-primary" id="btn-export-excel">Export Excel</button>
+        <button class="btn btn-secondary" id="btn-sort-x">Sort by X</button>
+        <span class="point-count" id="point-count">0 points</span>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>X</th>
+              <th>Y</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="data-tbody">
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Graph Digitizer &mdash; 100% Free, No Login Required</p>
+      <p class="footer-sub">Built for researchers, students, and academics</p>
+    </div>
+  </footer>
+
+  <script src="js/digitizer.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

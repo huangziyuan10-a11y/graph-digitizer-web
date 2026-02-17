@@ -1,0 +1,13 @@
+{
+  "name": "graph-digitizer",
+  "version": "1.0.0",
+  "description": "Free web-based graph digitizer tool for researchers, students, and academics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
