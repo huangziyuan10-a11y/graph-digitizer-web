@@ -62,6 +62,68 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   }
 
+  // --- ROI (Region of Interest) ---
+  let isROIMode = false;
+  let roiStart = null;
+
+  document.getElementById('btn-set-roi').addEventListener('click', () => {
+    isROIMode = true;
+    roiStart = null;
+    canvas.classList.add('roi-mode');
+    document.getElementById('roi-status').textContent = 'Draw a rectangle on the image...';
+  });
+
+  document.getElementById('btn-clear-roi').addEventListener('click', () => {
+    digitizer.clearROI();
+    document.getElementById('roi-status').textContent = 'No region set (will scan entire image)';
+  });
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!isROIMode) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    roiStart = {
+      x: Math.round((e.clientX - rect.left) * scaleX),
+      y: Math.round((e.clientY - rect.top) * scaleY)
+    };
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isROIMode || !roiStart) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const curX = Math.round((e.clientX - rect.left) * scaleX);
+    const curY = Math.round((e.clientY - rect.top) * scaleY);
+    // Live preview of ROI rectangle
+    digitizer.roi = { x1: roiStart.x, y1: roiStart.y, x2: curX, y2: curY };
+    digitizer.drawAll();
+  });
+
+  canvas.addEventListener('mouseup', (e) => {
+    if (!isROIMode || !roiStart) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const endX = Math.round((e.clientX - rect.left) * scaleX);
+    const endY = Math.round((e.clientY - rect.top) * scaleY);
+
+    // Only set ROI if rectangle is big enough (at least 20px)
+    if (Math.abs(endX - roiStart.x) > 20 && Math.abs(endY - roiStart.y) > 20) {
+      digitizer.setROI(roiStart.x, roiStart.y, endX, endY);
+      document.getElementById('roi-status').textContent = 'Data region set! Only this area will be scanned.';
+      document.getElementById('roi-status').style.color = '#10b981';
+    } else {
+      digitizer.clearROI();
+      document.getElementById('roi-status').textContent = 'Region too small. Try again.';
+    }
+
+    isROIMode = false;
+    roiStart = null;
+    canvas.classList.remove('roi-mode');
+  });
+
   // --- Calibration ---
   let currentCalPoint = 'x1';
   let isColorPickMode = false;
@@ -85,6 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Canvas click handler
   canvas.addEventListener('click', (e) => {
+    if (isROIMode) return; // ROI uses mousedown/mouseup instead
+
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;

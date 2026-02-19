@@ -18,6 +18,10 @@ class GraphDigitizer {
     // Extracted data points (pixel coords + real coords)
     this.dataPoints = [];
 
+    // Region of Interest (ROI) - only extract within this rectangle
+    // null means use entire image
+    this.roi = null; // { x1, y1, x2, y2 } in pixel coords
+
     // Settings
     this.targetColor = { r: 0, g: 0, b: 255 };
     this.colorTolerance = 50;
@@ -52,6 +56,31 @@ class GraphDigitizer {
       if (pt) {
         this.drawMarker(pt.x, pt.y, calColors[key], calLabels[key]);
       }
+    }
+
+    // Draw ROI rectangle
+    if (this.roi) {
+      const r = this.roi;
+      const rx = Math.min(r.x1, r.x2);
+      const ry = Math.min(r.y1, r.y2);
+      const rw = Math.abs(r.x2 - r.x1);
+      const rh = Math.abs(r.y2 - r.y1);
+      // Dim area outside ROI
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      this.ctx.fillRect(0, 0, this.canvas.width, ry); // top
+      this.ctx.fillRect(0, ry + rh, this.canvas.width, this.canvas.height - ry - rh); // bottom
+      this.ctx.fillRect(0, ry, rx, rh); // left
+      this.ctx.fillRect(rx + rw, ry, this.canvas.width - rx - rw, rh); // right
+      // Draw border
+      this.ctx.strokeStyle = '#f97316';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([6, 3]);
+      this.ctx.strokeRect(rx, ry, rw, rh);
+      this.ctx.setLineDash([]);
+      // Label
+      this.ctx.fillStyle = '#f97316';
+      this.ctx.font = 'bold 12px sans-serif';
+      this.ctx.fillText('Data Region', rx + 4, ry - 4);
     }
 
     // Draw data points
@@ -154,6 +183,21 @@ class GraphDigitizer {
     return { r: data[0], g: data[1], b: data[2] };
   }
 
+  setROI(x1, y1, x2, y2) {
+    this.roi = {
+      x1: Math.min(x1, x2),
+      y1: Math.min(y1, y2),
+      x2: Math.max(x1, x2),
+      y2: Math.max(y1, y2)
+    };
+    this.drawAll();
+  }
+
+  clearROI() {
+    this.roi = null;
+    this.drawAll();
+  }
+
   setTargetColor(r, g, b) {
     this.targetColor = { r, g, b };
   }
@@ -163,6 +207,14 @@ class GraphDigitizer {
     const g = parseInt(hex.substr(3, 2), 16);
     const b = parseInt(hex.substr(5, 2), 16);
     this.targetColor = { r, g, b };
+  }
+
+  // Get ROI bounds or full image bounds
+  _getBounds() {
+    if (this.roi) {
+      return { startX: this.roi.x1, endX: this.roi.x2, startY: this.roi.y1, endY: this.roi.y2 };
+    }
+    return { startX: 0, endX: this.image.width, startY: 0, endY: this.image.height };
   }
 
   // Preview which pixels match the current color + tolerance
@@ -181,14 +233,14 @@ class GraphDigitizer {
     const h = tempCanvas.height;
     const tol = this.colorTolerance;
     const tc = this.targetColor;
+    const bounds = this._getBounds();
 
     let matchCount = 0;
-    // Highlight matching pixels on the main canvas
     const mainImgData = this.ctx.getImageData(0, 0, w, h);
     const mainPixels = mainImgData.data;
 
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
+    for (let y = bounds.startY; y < bounds.endY; y++) {
+      for (let x = bounds.startX; x < bounds.endX; x++) {
         const idx = (y * w + x) * 4;
         const dr = pixels[idx] - tc.r;
         const dg = pixels[idx + 1] - tc.g;
@@ -196,7 +248,6 @@ class GraphDigitizer {
         const dist = Math.sqrt(dr * dr + dg * dg + db * db);
         if (dist <= tol) {
           matchCount++;
-          // Highlight in bright red
           mainPixels[idx] = 255;
           mainPixels[idx + 1] = 0;
           mainPixels[idx + 2] = 0;
@@ -227,18 +278,19 @@ class GraphDigitizer {
     const tol = this.colorTolerance;
     const tc = this.targetColor;
 
-    // Scan column by column: for each X, find matching Y positions
-    // This avoids BFS connectivity issues entirely
-    const numSamples = Math.min(200, w);
-    const step = Math.max(1, Math.floor(w / numSamples));
+    // Scan column by column within ROI bounds
+    const bounds = this._getBounds();
+    const roiW = bounds.endX - bounds.startX;
+    const numSamples = Math.min(200, roiW);
+    const step = Math.max(1, Math.floor(roiW / numSamples));
 
     this.dataPoints = [];
 
-    for (let x = 0; x < w; x += step) {
+    for (let x = bounds.startX; x < bounds.endX; x += step) {
       // Collect all matching Y positions in a 3-pixel-wide window
       const yPositions = [];
-      for (let wx = Math.max(0, x - 1); wx <= Math.min(w - 1, x + 1); wx++) {
-        for (let y = 0; y < h; y++) {
+      for (let wx = Math.max(bounds.startX, x - 1); wx <= Math.min(bounds.endX - 1, x + 1); wx++) {
+        for (let y = bounds.startY; y < bounds.endY; y++) {
           const idx = (y * w + wx) * 4;
           const dr = pixels[idx] - tc.r;
           const dg = pixels[idx + 1] - tc.g;

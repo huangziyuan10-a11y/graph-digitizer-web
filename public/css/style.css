@@ -265,7 +265,9 @@ canvas {
 .setting-group input[type="range"] { width: 80px; }
 .setting-group input[type="color"] { width: 36px; height: 28px; border: 1px solid var(--gray-300); border-radius: 4px; cursor: pointer; }
 
-.auto-hint { font-size: 0.9rem; color: var(--danger); margin-bottom: 10px; padding: 8px 12px; background: #fef2f2; border-radius: var(--radius); border-left: 3px solid var(--danger); }
+.auto-hint { font-size: 0.9rem; color: var(--gray-700); margin-bottom: 10px; padding: 8px 12px; background: #eff6ff; border-radius: var(--radius); border-left: 3px solid var(--primary); line-height: 1.5; }
+.roi-status { font-size: 0.8rem; color: var(--gray-500); }
+canvas.roi-mode { cursor: crosshair; }
 .btn-accent { background: var(--accent) !important; color: #fff !important; }
 .btn-accent:hover { background: #059669 !important; }
 .extract-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
