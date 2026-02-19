@@ -65,19 +65,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- ROI and Exclude Regions ---
   let drawMode = null; // 'roi' or 'exclude'
   let drawStart = null;
+  let ignoreNextClick = false; // prevent click from firing after draw interaction
 
   document.getElementById('btn-set-roi').addEventListener('click', () => {
     drawMode = 'roi';
     drawStart = null;
     canvas.classList.add('roi-mode');
-    document.getElementById('roi-status').textContent = 'Draw a rectangle around the data area...';
+    document.getElementById('roi-status').textContent = 'Now CLICK and DRAG on the image to draw a rectangle around the data area...';
   });
 
   document.getElementById('btn-exclude-roi').addEventListener('click', () => {
     drawMode = 'exclude';
     drawStart = null;
     canvas.classList.add('roi-mode');
-    document.getElementById('roi-status').textContent = 'Draw a rectangle over the legend/area to exclude...';
+    document.getElementById('roi-status').textContent = 'Now CLICK and DRAG on the image to draw a rectangle over the legend...';
   });
 
   document.getElementById('btn-clear-roi').addEventListener('click', () => {
@@ -132,11 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
       digitizer.addExcludeRegion(drawStart.x, drawStart.y, end.x, end.y);
       updateROIStatus();
     } else {
-      document.getElementById('roi-status').textContent = 'Rectangle too small. Try again.';
+      document.getElementById('roi-status').textContent = 'You need to click and DRAG (hold mouse button while moving) to draw a rectangle. Try again.';
     }
 
     drawMode = null;
     drawStart = null;
+    ignoreNextClick = true; // prevent the click event from triggering calibration
     canvas.classList.remove('roi-mode');
   });
 
@@ -179,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Canvas click handler
   canvas.addEventListener('click', (e) => {
     if (drawMode) return; // ROI/exclude uses mousedown/mouseup instead
+    if (ignoreNextClick) { ignoreNextClick = false; return; }
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
