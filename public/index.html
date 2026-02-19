@@ -118,8 +118,8 @@
           </div>
           <div class="setting-group">
             <label>Color tolerance:</label>
-            <input type="range" id="color-tolerance" min="5" max="100" value="30">
-            <span id="tolerance-value">30</span>
+            <input type="range" id="color-tolerance" min="5" max="150" value="50">
+            <span id="tolerance-value">50</span>
           </div>
           <div class="setting-group">
             <label>Min point size:</label>
@@ -129,9 +129,13 @@
         </div>
 
         <div class="extract-buttons">
+          <button class="btn btn-secondary" id="btn-preview">Preview Matching Pixels</button>
           <button class="btn btn-primary" id="btn-extract">Extract Data</button>
           <button class="btn btn-secondary" id="btn-clear-points">Clear Points</button>
           <button class="btn btn-secondary" id="btn-undo">Undo Last</button>
+        </div>
+        <div class="preview-info hidden" id="preview-info">
+          <span id="match-count"></span> pixels matched. Adjust color/tolerance if needed, then click Extract.
         </div>
       </div>
     </section>

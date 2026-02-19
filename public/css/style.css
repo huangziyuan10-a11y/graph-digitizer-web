@@ -266,6 +266,7 @@ canvas {
 .setting-group input[type="color"] { width: 36px; height: 28px; border: 1px solid var(--gray-300); border-radius: 4px; cursor: pointer; }
 
 .extract-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.preview-info { margin-top: 8px; font-size: 0.9rem; font-weight: 600; }
 
 /* Data Table */
 .data-controls {

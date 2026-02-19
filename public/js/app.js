@@ -166,6 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('point-size-value').textContent = e.target.value;
   });
 
+  document.getElementById('btn-preview').addEventListener('click', () => {
+    const count = digitizer.previewMatching();
+    const info = document.getElementById('preview-info');
+    info.classList.remove('hidden');
+    document.getElementById('match-count').textContent = count.toLocaleString();
+    if (count < 100) {
+      info.style.color = '#e11d48';
+      info.querySelector('span').textContent = count.toLocaleString();
+    } else {
+      info.style.color = '#10b981';
+    }
+  });
+
   document.getElementById('btn-extract').addEventListener('click', () => {
     if (!digitizer.calibrated) {
       alert('Please complete axis calibration first (Step 2).');

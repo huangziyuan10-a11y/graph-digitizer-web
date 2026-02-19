@@ -20,7 +20,7 @@ class GraphDigitizer {
 
     // Settings
     this.targetColor = { r: 0, g: 0, b: 255 };
-    this.colorTolerance = 30;
+    this.colorTolerance = 50;
     this.minPointSize = 3;
   }
 
@@ -165,7 +165,52 @@ class GraphDigitizer {
     this.targetColor = { r, g, b };
   }
 
+  // Preview which pixels match the current color + tolerance
+  previewMatching() {
+    if (!this.image) return 0;
+    this.drawAll();
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = this.image.width;
+    tempCanvas.height = this.image.height;
+    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+    tempCtx.drawImage(this.image, 0, 0);
+    const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const pixels = imgData.data;
+    const w = tempCanvas.width;
+    const h = tempCanvas.height;
+    const tol = this.colorTolerance;
+    const tc = this.targetColor;
+
+    let matchCount = 0;
+    // Highlight matching pixels on the main canvas
+    const mainImgData = this.ctx.getImageData(0, 0, w, h);
+    const mainPixels = mainImgData.data;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const idx = (y * w + x) * 4;
+        const dr = pixels[idx] - tc.r;
+        const dg = pixels[idx + 1] - tc.g;
+        const db = pixels[idx + 2] - tc.b;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist <= tol) {
+          matchCount++;
+          // Highlight in bright red
+          mainPixels[idx] = 255;
+          mainPixels[idx + 1] = 0;
+          mainPixels[idx + 2] = 0;
+          mainPixels[idx + 3] = 255;
+        }
+      }
+    }
+
+    this.ctx.putImageData(mainImgData, 0, 0);
+    return matchCount;
+  }
+
   // Auto-detect data points by color matching
+  // Uses column-scanning instead of BFS to handle lines, dots, and curves
   autoExtract() {
     if (!this.image || !this.calibrated) return [];
 
@@ -182,113 +227,52 @@ class GraphDigitizer {
     const tol = this.colorTolerance;
     const tc = this.targetColor;
 
-    // Find all matching pixels
-    const mask = new Uint8Array(w * h);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const idx = (y * w + x) * 4;
-        const dr = pixels[idx] - tc.r;
-        const dg = pixels[idx + 1] - tc.g;
-        const db = pixels[idx + 2] - tc.b;
-        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-        if (dist <= tol) {
-          mask[y * w + x] = 1;
-        }
-      }
-    }
+    // Scan column by column: for each X, find matching Y positions
+    // This avoids BFS connectivity issues entirely
+    const numSamples = Math.min(200, w);
+    const step = Math.max(1, Math.floor(w / numSamples));
 
-    // Connected component labeling (find clusters)
-    const visited = new Uint8Array(w * h);
-    const clusters = [];
-
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        if (mask[y * w + x] && !visited[y * w + x]) {
-          // BFS to find cluster, storing all pixels
-          const queue = [{ x, y }];
-          visited[y * w + x] = 1;
-          const clusterPixels = [];
-
-          while (queue.length > 0) {
-            const p = queue.shift();
-            clusterPixels.push(p);
-
-            // Check 8 neighbors
-            for (let dy = -1; dy <= 1; dy++) {
-              for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue;
-                const nx = p.x + dx, ny = p.y + dy;
-                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                  const ni = ny * w + nx;
-                  if (mask[ni] && !visited[ni]) {
-                    visited[ni] = 1;
-                    queue.push({ x: nx, y: ny });
-                  }
-                }
-              }
-            }
-          }
-
-          if (clusterPixels.length >= this.minPointSize) {
-            clusters.push(clusterPixels);
-          }
-        }
-      }
-    }
-
-    // Process each cluster: detect if it's a dot or a line
     this.dataPoints = [];
-    for (const pixels of clusters) {
-      // Find bounding box
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const p of pixels) {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
+
+    for (let x = 0; x < w; x += step) {
+      // Collect all matching Y positions in a 3-pixel-wide window
+      const yPositions = [];
+      for (let wx = Math.max(0, x - 1); wx <= Math.min(w - 1, x + 1); wx++) {
+        for (let y = 0; y < h; y++) {
+          const idx = (y * w + wx) * 4;
+          const dr = pixels[idx] - tc.r;
+          const dg = pixels[idx + 1] - tc.g;
+          const db = pixels[idx + 2] - tc.b;
+          const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+          if (dist <= tol) {
+            yPositions.push(y);
+          }
+        }
       }
-      const spanX = maxX - minX + 1;
-      const spanY = maxY - minY + 1;
-      const maxSpan = Math.max(spanX, spanY);
 
-      // If the cluster is small (a dot/marker), use centroid
-      if (maxSpan <= 20) {
-        let sumX = 0, sumY = 0;
-        for (const p of pixels) { sumX += p.x; sumY += p.y; }
-        const cx = Math.round(sumX / pixels.length);
-        const cy = Math.round(sumY / pixels.length);
-        const { x, y } = this.pixelToData(cx, cy);
-        this.dataPoints.push({ px: cx, py: cy, x, y });
-      } else {
-        // It's a line/curve — sample at regular X intervals
-        // Group pixels by X coordinate
-        const columnMap = new Map();
-        for (const p of pixels) {
-          if (!columnMap.has(p.x)) columnMap.set(p.x, []);
-          columnMap.get(p.x).push(p.y);
+      if (yPositions.length === 0) continue;
+
+      // Group nearby Y values (within 5px) to handle line thickness
+      yPositions.sort((a, b) => a - b);
+      const groups = [];
+      let currentGroup = [yPositions[0]];
+
+      for (let i = 1; i < yPositions.length; i++) {
+        if (yPositions[i] - yPositions[i - 1] <= 5) {
+          currentGroup.push(yPositions[i]);
+        } else {
+          groups.push(currentGroup);
+          currentGroup = [yPositions[i]];
         }
+      }
+      groups.push(currentGroup);
 
-        // Determine sampling interval (aim for ~50-100 points per line)
-        const numSamples = Math.min(100, Math.max(20, Math.floor(spanX / 3)));
-        const step = Math.max(1, Math.floor(spanX / numSamples));
-
-        // Sample at regular X intervals
-        for (let sx = minX; sx <= maxX; sx += step) {
-          // Collect Y values in a small window around sx
-          const yValues = [];
-          for (let wx = sx - 1; wx <= sx + 1; wx++) {
-            if (columnMap.has(wx)) {
-              yValues.push(...columnMap.get(wx));
-            }
-          }
-          if (yValues.length > 0) {
-            // Use median Y for robustness
-            yValues.sort((a, b) => a - b);
-            const medianY = yValues[Math.floor(yValues.length / 2)];
-            const { x, y } = this.pixelToData(sx, medianY);
-            this.dataPoints.push({ px: sx, py: medianY, x, y });
-          }
-        }
+      // For each group, take the median Y as a data point
+      for (const group of groups) {
+        if (group.length < this.minPointSize) continue;
+        const medianY = group[Math.floor(group.length / 2)];
+        const { x: rx, y: ry } = this.pixelToData(x, medianY);
+        this.dataPoints.push({ px: x, py: medianY, x: rx, y: ry });
       }
     }
 
