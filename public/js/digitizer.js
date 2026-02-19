@@ -22,6 +22,9 @@ class GraphDigitizer {
     // null means use entire image
     this.roi = null; // { x1, y1, x2, y2 } in pixel coords
 
+    // Exclude regions - areas to skip (e.g., legend boxes)
+    this.excludeRegions = []; // array of { x1, y1, x2, y2 }
+
     // Settings
     this.targetColor = { r: 0, g: 0, b: 255 };
     this.colorTolerance = 50;
@@ -81,6 +84,28 @@ class GraphDigitizer {
       this.ctx.fillStyle = '#f97316';
       this.ctx.font = 'bold 12px sans-serif';
       this.ctx.fillText('Data Region', rx + 4, ry - 4);
+    }
+
+    // Draw exclude regions
+    for (let i = 0; i < this.excludeRegions.length; i++) {
+      const e = this.excludeRegions[i];
+      const ex = Math.min(e.x1, e.x2);
+      const ey = Math.min(e.y1, e.y2);
+      const ew = Math.abs(e.x2 - e.x1);
+      const eh = Math.abs(e.y2 - e.y1);
+      // Dim excluded area
+      this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+      this.ctx.fillRect(ex, ey, ew, eh);
+      // Draw border
+      this.ctx.strokeStyle = '#e11d48';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([4, 3]);
+      this.ctx.strokeRect(ex, ey, ew, eh);
+      this.ctx.setLineDash([]);
+      // Label
+      this.ctx.fillStyle = '#e11d48';
+      this.ctx.font = 'bold 11px sans-serif';
+      this.ctx.fillText(`Exclude ${i + 1}`, ex + 3, ey - 3);
     }
 
     // Draw data points
@@ -198,6 +223,29 @@ class GraphDigitizer {
     this.drawAll();
   }
 
+  addExcludeRegion(x1, y1, x2, y2) {
+    this.excludeRegions.push({
+      x1: Math.min(x1, x2),
+      y1: Math.min(y1, y2),
+      x2: Math.max(x1, x2),
+      y2: Math.max(y1, y2)
+    });
+    this.drawAll();
+  }
+
+  clearExcludeRegions() {
+    this.excludeRegions = [];
+    this.drawAll();
+  }
+
+  // Check if a pixel is inside any exclude region
+  _isExcluded(x, y) {
+    for (const e of this.excludeRegions) {
+      if (x >= e.x1 && x <= e.x2 && y >= e.y1 && y <= e.y2) return true;
+    }
+    return false;
+  }
+
   setTargetColor(r, g, b) {
     this.targetColor = { r, g, b };
   }
@@ -241,6 +289,7 @@ class GraphDigitizer {
 
     for (let y = bounds.startY; y < bounds.endY; y++) {
       for (let x = bounds.startX; x < bounds.endX; x++) {
+        if (this._isExcluded(x, y)) continue;
         const idx = (y * w + x) * 4;
         const dr = pixels[idx] - tc.r;
         const dg = pixels[idx + 1] - tc.g;
@@ -291,6 +340,7 @@ class GraphDigitizer {
       const yPositions = [];
       for (let wx = Math.max(bounds.startX, x - 1); wx <= Math.min(bounds.endX - 1, x + 1); wx++) {
         for (let y = bounds.startY; y < bounds.endY; y++) {
+          if (this._isExcluded(wx, y)) continue;
           const idx = (y * w + wx) * 4;
           const dr = pixels[idx] - tc.r;
           const dg = pixels[idx + 1] - tc.g;

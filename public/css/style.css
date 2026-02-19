@@ -270,6 +270,8 @@ canvas {
 canvas.roi-mode { cursor: crosshair; }
 .btn-accent { background: var(--accent) !important; color: #fff !important; }
 .btn-accent:hover { background: #059669 !important; }
+.btn-danger-sm { background: var(--danger) !important; color: #fff !important; font-size: 0.8rem !important; }
+.btn-danger-sm:hover { background: #dc2626 !important; }
 .extract-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 .preview-info { margin-top: 8px; font-size: 0.9rem; font-weight: 600; }
 

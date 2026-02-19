@@ -62,67 +62,98 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   }
 
-  // --- ROI (Region of Interest) ---
-  let isROIMode = false;
-  let roiStart = null;
+  // --- ROI and Exclude Regions ---
+  let drawMode = null; // 'roi' or 'exclude'
+  let drawStart = null;
 
   document.getElementById('btn-set-roi').addEventListener('click', () => {
-    isROIMode = true;
-    roiStart = null;
+    drawMode = 'roi';
+    drawStart = null;
     canvas.classList.add('roi-mode');
-    document.getElementById('roi-status').textContent = 'Draw a rectangle on the image...';
+    document.getElementById('roi-status').textContent = 'Draw a rectangle around the data area...';
+  });
+
+  document.getElementById('btn-exclude-roi').addEventListener('click', () => {
+    drawMode = 'exclude';
+    drawStart = null;
+    canvas.classList.add('roi-mode');
+    document.getElementById('roi-status').textContent = 'Draw a rectangle over the legend/area to exclude...';
   });
 
   document.getElementById('btn-clear-roi').addEventListener('click', () => {
     digitizer.clearROI();
+    digitizer.clearExcludeRegions();
     document.getElementById('roi-status').textContent = 'No region set (will scan entire image)';
+    document.getElementById('roi-status').style.color = '';
   });
 
-  canvas.addEventListener('mousedown', (e) => {
-    if (!isROIMode) return;
+  function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    roiStart = {
+    return {
       x: Math.round((e.clientX - rect.left) * scaleX),
       y: Math.round((e.clientY - rect.top) * scaleY)
     };
+  }
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!drawMode) return;
+    drawStart = getCanvasCoords(e);
   });
 
   canvas.addEventListener('mousemove', (e) => {
-    if (!isROIMode || !roiStart) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const curX = Math.round((e.clientX - rect.left) * scaleX);
-    const curY = Math.round((e.clientY - rect.top) * scaleY);
-    // Live preview of ROI rectangle
-    digitizer.roi = { x1: roiStart.x, y1: roiStart.y, x2: curX, y2: curY };
+    if (!drawMode || !drawStart) return;
+    const cur = getCanvasCoords(e);
+    if (drawMode === 'roi') {
+      digitizer.roi = { x1: drawStart.x, y1: drawStart.y, x2: cur.x, y2: cur.y };
+    } else if (drawMode === 'exclude') {
+      // Show preview of current exclude region being drawn
+      const previewExclude = { x1: drawStart.x, y1: drawStart.y, x2: cur.x, y2: cur.y };
+      // Temporarily add for drawing, will be replaced on mouseup
+      const tempLen = digitizer.excludeRegions.length;
+      digitizer.excludeRegions[tempLen] = previewExclude;
+      digitizer.drawAll();
+      digitizer.excludeRegions.length = tempLen; // remove temp
+      return;
+    }
     digitizer.drawAll();
   });
 
   canvas.addEventListener('mouseup', (e) => {
-    if (!isROIMode || !roiStart) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const endX = Math.round((e.clientX - rect.left) * scaleX);
-    const endY = Math.round((e.clientY - rect.top) * scaleY);
+    if (!drawMode || !drawStart) return;
+    const end = getCanvasCoords(e);
+    const big = Math.abs(end.x - drawStart.x) > 10 && Math.abs(end.y - drawStart.y) > 10;
 
-    // Only set ROI if rectangle is big enough (at least 20px)
-    if (Math.abs(endX - roiStart.x) > 20 && Math.abs(endY - roiStart.y) > 20) {
-      digitizer.setROI(roiStart.x, roiStart.y, endX, endY);
-      document.getElementById('roi-status').textContent = 'Data region set! Only this area will be scanned.';
-      document.getElementById('roi-status').style.color = '#10b981';
+    if (drawMode === 'roi' && big) {
+      digitizer.setROI(drawStart.x, drawStart.y, end.x, end.y);
+      updateROIStatus();
+    } else if (drawMode === 'exclude' && big) {
+      digitizer.addExcludeRegion(drawStart.x, drawStart.y, end.x, end.y);
+      updateROIStatus();
     } else {
-      digitizer.clearROI();
-      document.getElementById('roi-status').textContent = 'Region too small. Try again.';
+      document.getElementById('roi-status').textContent = 'Rectangle too small. Try again.';
     }
 
-    isROIMode = false;
-    roiStart = null;
+    drawMode = null;
+    drawStart = null;
     canvas.classList.remove('roi-mode');
   });
+
+  function updateROIStatus() {
+    const parts = [];
+    if (digitizer.roi) parts.push('Data region set');
+    if (digitizer.excludeRegions.length > 0) {
+      parts.push(`${digitizer.excludeRegions.length} area(s) excluded`);
+    }
+    if (parts.length === 0) {
+      document.getElementById('roi-status').textContent = 'No region set (will scan entire image)';
+      document.getElementById('roi-status').style.color = '';
+    } else {
+      document.getElementById('roi-status').textContent = parts.join(', ') + '.';
+      document.getElementById('roi-status').style.color = '#10b981';
+    }
+  }
 
   // --- Calibration ---
   let currentCalPoint = 'x1';
@@ -147,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Canvas click handler
   canvas.addEventListener('click', (e) => {
-    if (isROIMode) return; // ROI uses mousedown/mouseup instead
+    if (drawMode) return; // ROI/exclude uses mousedown/mouseup instead
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;

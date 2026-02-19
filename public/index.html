@@ -111,11 +111,14 @@
         </div>
 
         <div class="auto-settings" id="auto-settings">
-          <p class="auto-hint"><strong>Step A:</strong> Click "Select Data Region" and drag a rectangle around the plot area (excluding legend and labels).<br>
+          <p class="auto-hint"><strong>Step A:</strong> Click "Exclude Legend/Area" and drag over the legend to block it from scanning.<br>
           <strong>Step B:</strong> Click "Pick from image" and click on the line/curve to select its color.</p>
           <div class="setting-group">
             <button class="btn btn-sm btn-accent" id="btn-set-roi">Select Data Region</button>
-            <button class="btn btn-sm" id="btn-clear-roi">Clear Region</button>
+            <button class="btn btn-sm btn-danger-sm" id="btn-exclude-roi">Exclude Legend/Area</button>
+            <button class="btn btn-sm" id="btn-clear-roi">Clear All Regions</button>
+          </div>
+          <div class="setting-group">
             <span class="roi-status" id="roi-status">No region set (will scan entire image)</span>
           </div>
           <div class="setting-group">
