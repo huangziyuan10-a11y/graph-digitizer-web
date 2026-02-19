@@ -184,9 +184,20 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Please complete axis calibration first (Step 2).');
       return;
     }
-    digitizer.autoExtract();
+    const points = digitizer.autoExtract();
     updateDataTable();
     stepData.scrollIntoView({ behavior: 'smooth' });
+
+    if (points.length <= 5) {
+      alert(
+        `Only ${points.length} point(s) found!\n\n` +
+        'Tips to get more points:\n' +
+        '1. Click "Pick from image" and click directly on the line/curve in your graph\n' +
+        '2. Increase the Color Tolerance slider (try 80-120)\n' +
+        '3. Click "Preview Matching Pixels" to see what matches before extracting\n' +
+        '4. Make sure the target color matches the data line color'
+      );
+    }
   });
 
   document.getElementById('btn-clear-points').addEventListener('click', () => {

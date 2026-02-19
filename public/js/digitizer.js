@@ -268,8 +268,9 @@ class GraphDigitizer {
       groups.push(currentGroup);
 
       // For each group, take the median Y as a data point
+      // Use minPointSize=1 for column scanning (thin lines have few pixels per column)
       for (const group of groups) {
-        if (group.length < this.minPointSize) continue;
+        if (group.length < 1) continue;
         const medianY = group[Math.floor(group.length / 2)];
         const { x: rx, y: ry } = this.pixelToData(x, medianY);
         this.dataPoints.push({ px: x, py: medianY, x: rx, y: ry });
@@ -279,6 +280,7 @@ class GraphDigitizer {
     // Sort by x
     this.dataPoints.sort((a, b) => a.x - b.x);
     this.drawAll();
+    console.log(`Auto-extract: found ${this.dataPoints.length} data points (tolerance=${tol}, color=rgb(${tc.r},${tc.g},${tc.b}))`);
     return this.dataPoints;
   }
 
