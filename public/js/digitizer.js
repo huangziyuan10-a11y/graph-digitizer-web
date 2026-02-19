@@ -204,16 +204,14 @@ class GraphDigitizer {
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         if (mask[y * w + x] && !visited[y * w + x]) {
-          // BFS to find cluster
+          // BFS to find cluster, storing all pixels
           const queue = [{ x, y }];
           visited[y * w + x] = 1;
-          let sumX = 0, sumY = 0, count = 0;
+          const clusterPixels = [];
 
           while (queue.length > 0) {
             const p = queue.shift();
-            sumX += p.x;
-            sumY += p.y;
-            count++;
+            clusterPixels.push(p);
 
             // Check 8 neighbors
             for (let dy = -1; dy <= 1; dy++) {
@@ -231,23 +229,67 @@ class GraphDigitizer {
             }
           }
 
-          if (count >= this.minPointSize) {
-            clusters.push({
-              cx: Math.round(sumX / count),
-              cy: Math.round(sumY / count),
-              size: count
-            });
+          if (clusterPixels.length >= this.minPointSize) {
+            clusters.push(clusterPixels);
           }
         }
       }
     }
 
-    // For lines: if clusters are very elongated, sample along them
-    // For now, use cluster centroids as data points
+    // Process each cluster: detect if it's a dot or a line
     this.dataPoints = [];
-    for (const cluster of clusters) {
-      const { x, y } = this.pixelToData(cluster.cx, cluster.cy);
-      this.dataPoints.push({ px: cluster.cx, py: cluster.cy, x, y });
+    for (const pixels of clusters) {
+      // Find bounding box
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of pixels) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const spanX = maxX - minX + 1;
+      const spanY = maxY - minY + 1;
+      const maxSpan = Math.max(spanX, spanY);
+
+      // If the cluster is small (a dot/marker), use centroid
+      if (maxSpan <= 20) {
+        let sumX = 0, sumY = 0;
+        for (const p of pixels) { sumX += p.x; sumY += p.y; }
+        const cx = Math.round(sumX / pixels.length);
+        const cy = Math.round(sumY / pixels.length);
+        const { x, y } = this.pixelToData(cx, cy);
+        this.dataPoints.push({ px: cx, py: cy, x, y });
+      } else {
+        // It's a line/curve — sample at regular X intervals
+        // Group pixels by X coordinate
+        const columnMap = new Map();
+        for (const p of pixels) {
+          if (!columnMap.has(p.x)) columnMap.set(p.x, []);
+          columnMap.get(p.x).push(p.y);
+        }
+
+        // Determine sampling interval (aim for ~50-100 points per line)
+        const numSamples = Math.min(100, Math.max(20, Math.floor(spanX / 3)));
+        const step = Math.max(1, Math.floor(spanX / numSamples));
+
+        // Sample at regular X intervals
+        for (let sx = minX; sx <= maxX; sx += step) {
+          // Collect Y values in a small window around sx
+          const yValues = [];
+          for (let wx = sx - 1; wx <= sx + 1; wx++) {
+            if (columnMap.has(wx)) {
+              yValues.push(...columnMap.get(wx));
+            }
+          }
+          if (yValues.length > 0) {
+            // Use median Y for robustness
+            yValues.sort((a, b) => a - b);
+            const medianY = yValues[Math.floor(yValues.length / 2)];
+            const { x, y } = this.pixelToData(sx, medianY);
+            this.dataPoints.push({ px: sx, py: medianY, x, y });
+          }
+        }
+      }
     }
 
     // Sort by x
